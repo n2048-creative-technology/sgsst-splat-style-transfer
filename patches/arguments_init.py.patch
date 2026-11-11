@@ -1,0 +1,13 @@
+--- a/arguments/__init__.py
++++ b/arguments/__init__.py
+@@ -54,6 +54,10 @@
+         self._white_background = False
+         self.data_device = "cuda"
+         self.eval = False
++        self.lazy_images = False  # when True, don't eagerly decode+hold every
++                                   # training image in RAM/VRAM at once -- load
++                                   # each from disk per-access instead. Slower,
++                                   # bounded peak memory, same quality/pixels.
+         super().__init__(parser, "Loading Parameters", sentinel)
+ 
+     def extract(self, args):

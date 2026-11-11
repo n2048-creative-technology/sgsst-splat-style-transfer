@@ -1,0 +1,57 @@
+--- a/stylize.py
++++ b/stylize.py
+@@ -116,13 +116,13 @@
+           style_image = resize_height_pil(style_img_pil_hr, round(new_height * args.resize_images[i]) )
+           style_image.save(  os.path.join(args.model_path, "style_image_{}.png".format( int(1/args.resize_images[i]) )) ) 
+           style_image = prep(style_image).unsqueeze(0).to("cuda")
+-          vgg_blocks_style_img = VGG_BY_BLOCKS(vgg, style_image, style_layers, content_layers = [])
++          vgg_blocks_style_img = VGG_BY_BLOCKS(vgg, style_image, style_layers, content_layers = [], inner_block_size=args.vgg_block_size)
+           style_targets_by_blocks_arr.append( vgg_blocks_style_img.global_Gram_matrices_means_and_stds() )
+ 
+     if args.optimize_iteration > 0:
+           style_image = resize_height_pil(style_img_pil_hr, round(new_height * args.optimize_size) )
+           style_image = prep(style_image).unsqueeze(0).to("cuda")
+-          vgg_blocks_style_img = VGG_BY_BLOCKS(vgg, style_image, style_layers, content_layers = [])
++          vgg_blocks_style_img = VGG_BY_BLOCKS(vgg, style_image, style_layers, content_layers = [], inner_block_size=args.vgg_block_size)
+           style_targets_by_blocks_gradopt =  vgg_blocks_style_img.global_Gram_matrices_means_and_stds() 
+     
+ 
+@@ -196,12 +196,14 @@
+ 
+                     vgg_blocks_content_img = VGG_BY_BLOCKS(vgg, rgb_gt, style_layers,
+                                                            content_layers = content_layers,
++                                                           inner_block_size=args.vgg_block_size,
+                                                            verbose_mode=False)
+ 
+                     content_targets_by_blocks = vgg_blocks_content_img.compute_content_layer_by_blocks()
+ 
+                     vgg_blocks_opt_img = VGG_BY_BLOCKS(vgg, rgb_pred, style_layers,
+                                            content_layers = content_layers,
++                                           inner_block_size=args.vgg_block_size,
+                                            verbose_mode=False)
+                     loss = vgg_blocks_opt_img.global_content_plus_Gram_means_stds_loss_with_gradient(
+                                                         style_targets_by_blocks_gradopt, style_weights,
+@@ -225,11 +227,13 @@
+  
+                     vgg_blocks_content_img = VGG_BY_BLOCKS(vgg, rgb_gt, style_layers,
+                                                            content_layers = content_layers,
++                                                           inner_block_size=args.vgg_block_size,
+                                                            verbose_mode=False)
+                     content_targets_by_blocks = vgg_blocks_content_img.compute_content_layer_by_blocks()
+  
+                     vgg_blocks_opt_img = VGG_BY_BLOCKS(vgg, rgb_pred, style_layers,
+                                            content_layers = content_layers,
++                                           inner_block_size=args.vgg_block_size,
+                                            verbose_mode=False)
+  
+                     loss_hand = vgg_blocks_opt_img.global_content_plus_Gram_means_stds_loss_with_gradient(
+@@ -359,7 +363,8 @@
+     parser.add_argument("--min_size_threshold", type=int,   default=511, help="minimun pix size of image for automatically scaling")  
+ 
+     parser.add_argument("--optimize_size",      type=float, default=-1,  help="the minumum factor of resizing images for optimising training. <0 means using minimum one of resize_image")  
+-    parser.add_argument("--optimize_iteration", type=int,   default=10000, help="iteration step for optimising training, setting <=0 for ignore pre-optimisation")  
++    parser.add_argument("--optimize_iteration", type=int,   default=10000, help="iteration step for optimising training, setting <=0 for ignore pre-optimisation")
++    parser.add_argument("--vgg_block_size",     type=int,   default=512, help="VGG_BY_BLOCKS inner tile size (px). Smaller = lower peak VRAM, same final result, slower (more sequential tiles). Does NOT change quality -- the Gram/mean/std statistics are summed over all tiles either way.")  
+ 
+ 
+     args = parser.parse_args(sys.argv[1:])

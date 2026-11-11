@@ -1,0 +1,80 @@
+--- a/scene/cameras.py
++++ b/scene/cameras.py
+@@ -17,7 +17,8 @@
+ class Camera(nn.Module):
+     def __init__(self, colmap_id, R, T, FoVx, FoVy, image, gt_alpha_mask,
+                  image_name, uid,
+-                 trans=np.array([0.0, 0.0, 0.0]), scale=1.0, data_device = "cuda"
++                 trans=np.array([0.0, 0.0, 0.0]), scale=1.0, data_device = "cuda",
++                 lazy_image_path=None, lazy_resolution=None
+                  ):
+         super(Camera, self).__init__()
+ 
+@@ -36,14 +37,29 @@
+             print(f"[Warning] Custom device {data_device} failed, fallback to default cuda device" )
+             self.data_device = torch.device("cuda")
+ 
+-        self.original_image = image.clamp(0.0, 1.0).to(self.data_device)
+-        self.image_width = self.original_image.shape[2]
+-        self.image_height = self.original_image.shape[1]
+-
+-        if gt_alpha_mask is not None:
+-            self.original_image *= gt_alpha_mask.to(self.data_device)
++        # Lazy-load mode: don't materialize the full-res image tensor now --
++        # load it from disk on each access instead. Trades speed (re-decodes
++        # JPEG + re-converts every time original_image is read) for RAM: with
++        # hundreds of full-res training images, eagerly holding every decoded
++        # tensor in memory can exceed a worker's memory budget even though
++        # there's plenty of free system RAM overall (confirmed OOM-killer
++        # cgroup kill, 2026-11-10, dense 699-camera scene). Does NOT change
++        # style-transfer quality/resolution -- same pixels, just loaded later.
++        self._lazy_image_path = lazy_image_path
++        self._lazy_resolution = lazy_resolution
++        if lazy_image_path is not None:
++            self._cached_original_image = None
++            self.image_width = lazy_resolution[0]
++            self.image_height = lazy_resolution[1]
+         else:
+-            self.original_image *= torch.ones((1, self.image_height, self.image_width), device=self.data_device)
++            self.original_image = image.clamp(0.0, 1.0).to(self.data_device)
++            self.image_width = self.original_image.shape[2]
++            self.image_height = self.original_image.shape[1]
++
++            if gt_alpha_mask is not None:
++                self.original_image *= gt_alpha_mask.to(self.data_device)
++            else:
++                self.original_image *= torch.ones((1, self.image_height, self.image_width), device=self.data_device)
+ 
+         self.zfar = 100.0
+         self.znear = 0.01
+@@ -56,6 +72,30 @@
+         self.full_proj_transform = (self.world_view_transform.unsqueeze(0).bmm(self.projection_matrix.unsqueeze(0))).squeeze(0)
+         self.camera_center = self.world_view_transform.inverse()[3, :3]
+ 
++    @property
++    def original_image(self):
++        if self._lazy_image_path is None:
++            return self._original_image_eager
++        if self._cached_original_image is not None:
++            return self._cached_original_image
++        from PIL import Image
++        from utils.general_utils import PILtoTorch
++        pil_image = Image.open(self._lazy_image_path)
++        resized = PILtoTorch(pil_image, self._lazy_resolution)
++        img = resized[:3, ...].clamp(0.0, 1.0).to(self.data_device)
++        if resized.shape[0] == 4:
++            img = img * resized[3:4, ...].to(self.data_device)
++        else:
++            img = img * torch.ones((1, self.image_height, self.image_width), device=self.data_device)
++        # Note: intentionally NOT cached -- that's the whole point (keeps
++        # peak resident memory bounded). Re-decodes each access; slower,
++        # same pixels/quality.
++        return img
++
++    @original_image.setter
++    def original_image(self, value):
++        self._original_image_eager = value
++
+ class MiniCam:
+     def __init__(self, width, height, fovy, fovx, znear, zfar, world_view_transform, full_proj_transform):
+         self.image_width = width

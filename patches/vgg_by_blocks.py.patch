@@ -1,0 +1,17 @@
+--- a/scaling_painting_style_transfer/vgg_by_blocks.py
++++ b/scaling_painting_style_transfer/vgg_by_blocks.py
+@@ -18,7 +18,13 @@
+ 
+ 
+ class VGG_BY_BLOCKS:
+-  def __init__(self, vgg, img_torch, style_layers, inner_block_size = 512, content_layers=[], overlap_margin_size = 256, verbose_mode=True):
++  def __init__(self, vgg, img_torch, style_layers, inner_block_size = 512, content_layers=[], overlap_margin_size = None, verbose_mode=True):
++    if overlap_margin_size is None:
++        # keep the overlap below the tile size (avoids the "Inner block
++        # size is too small" auto-halving warning spam when callers pass a
++        # small inner_block_size for VRAM-constrained runs) -- same final
++        # result either way, just less log noise.
++        overlap_margin_size = min(256, inner_block_size // 4)
+     self.img_torch = img_torch
+ 
+     # Block section:

@@ -1,0 +1,22 @@
+--- a/utils/camera_utils.py
++++ b/utils/camera_utils.py
+@@ -38,6 +38,19 @@
+         scale = float(global_down) * float(resolution_scale)
+         resolution = (int(orig_w / scale), int(orig_h / scale))
+ 
++    lazy_images = getattr(args, "lazy_images", False)
++    if lazy_images:
++        # Don't decode+convert the full-res image now -- just record the
++        # path and target resolution; the Camera object will load it from
++        # disk on each access instead of holding all N decoded tensors in
++        # memory simultaneously. Slower (re-decodes JPEG every access),
++        # same pixels/quality, bounded peak RAM regardless of dataset size.
++        return Camera(colmap_id=cam_info.uid, R=cam_info.R, T=cam_info.T,
++                      FoVx=cam_info.FovX, FoVy=cam_info.FovY,
++                      image=None, gt_alpha_mask=None,
++                      image_name=cam_info.image_name, uid=id, data_device=args.data_device,
++                      lazy_image_path=cam_info.image_path, lazy_resolution=resolution)
++
+     resized_image_rgb = PILtoTorch(cam_info.image, resolution)
+ 
+     gt_image = resized_image_rgb[:3, ...]
