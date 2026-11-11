@@ -35,7 +35,10 @@ repo. It's a real, moderately dense scene, not a cherry-picked easy case.
 
 Both result images show visible dark/desaturated noir-style influence
 from the style image, applied to the real trained geometry — not a
-flat filter.
+flat filter. All three screenshots (original + both modes) are rendered
+at the identical fixed camera position
+(`@-2.434,0.045,1.154,1.94,-0.23,1.333`) for a direct side-by-side
+comparison.
 
 ## Setup
 
