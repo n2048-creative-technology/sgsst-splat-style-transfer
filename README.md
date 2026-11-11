@@ -24,7 +24,6 @@ repo. It's a real, moderately dense scene, not a cherry-picked easy case.
 |---|---|
 | ![Starry Night](examples/styles/starry_night.jpg) `starry_night.jpg` | Van Gogh's *Starry Night* — classic strong-palette/strong-texture style transfer test case |
 | ![NYC fog, B&W](examples/styles/nyc_fog_bw.jpg) `nyc_fog_bw.jpg` | Dark, foggy, high-contrast black & white street photo — used for the examples below |
-| ![Lynch fog](examples/styles/lynch_fog.jpg) `lynch_fog.jpg` | Misty forest/mountain road, dark cinematic palette (David Lynch / Twin Peaks reference) |
 
 ### Results on `video-splat-gdrive-20261031` + `nyc_fog_bw.jpg`
 
